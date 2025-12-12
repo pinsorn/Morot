@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Motor Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/motor_controller.js"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      /* Custom scrollbar for log */
+      #logArea::-webkit-scrollbar {
+        width: 8px;
+      }
+      #logArea::-webkit-scrollbar-track {
+        background: #1f2937;
+      }
+      #logArea::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 4px;
+      }
+      #logArea::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 p-4 shadow-md">
+      <div class="container mx-auto flex justify-between items-center">
+        <h1 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+            ></path>
+          </svg>
+          Motor Control Panel
+        </h1>
+        <div class="flex items-center gap-4">
+          <div
+            id="connectionStatus"
+            class="flex items-center gap-2 text-sm text-gray-400"
+          >
+            <span class="w-2 h-2 rounded-full bg-red-500" id="statusDot"></span>
+            <span id="statusText">Disconnected</span>
+          </div>
+          <button
+            id="connectBtn"
+            class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-900/20"
+          >
+            Connect Device
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main
+      class="flex-grow container mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6"
+    >
+      <!-- Left Column: Controls -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Global Controls -->
+        <div
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm"
+        >
+          <h2
+            class="text-lg font-semibold mb-4 text-gray-300 border-b border-gray-700 pb-2"
+          >
+            Global Controls
+          </h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button
+              onclick="stopAll()"
+              class="bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-lg font-bold transition flex justify-center items-center gap-2"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              STOP ALL
+            </button>
+            <button
+              onclick="emergencyStopAll()"
+              class="bg-red-600 hover:bg-red-500 text-white p-3 rounded-lg font-bold transition flex justify-center items-center gap-2"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              E-STOP
+            </button>
+            <button
+              onclick="enableAll()"
+              class="bg-green-700 hover:bg-green-600 text-white p-3 rounded-lg font-semibold transition"
+            >
+              Enable All
+            </button>
+            <button
+              onclick="disableAll()"
+              class="bg-gray-600 hover:bg-gray-500 text-white p-3 rounded-lg font-semibold transition"
+            >
+              Disable All
+            </button>
+          </div>
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex gap-2">
+              <input
+                type="number"
+                id="globalSpeed"
+                placeholder="Speed"
+                class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2 w-full focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onclick="setGlobalSpeed()"
+                class="bg-blue-600 hover:bg-blue-500 px-4 rounded text-white"
+              >
+                Set Speed
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="number"
+                id="globalAccel"
+                placeholder="Accel"
+                class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2 w-full focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onclick="setGlobalAccel()"
+                class="bg-blue-600 hover:bg-blue-500 px-4 rounded text-white"
+              >
+                Set Accel
+              </button>
+            </div>
+            <div class="flex gap-2 md:col-span-2">
+              <input
+                type="number"
+                id="globalLimitComp"
+                placeholder="Limit Comp Ratio (Default 1)"
+                step="0.1"
+                class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2 w-full focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onclick="setGlobalLimitComp()"
+                class="bg-blue-600 hover:bg-blue-500 px-4 rounded text-white whitespace-nowrap"
+              >
+                Set Limit Ratio
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calibration -->
+        <div
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm"
+        >
+          <h2
+            class="text-lg font-semibold mb-4 text-purple-400 border-b border-gray-700 pb-2"
+          >
+            Calibration
+          </h2>
+          <div class="flex flex-col md:flex-row gap-4 items-center">
+            <button
+              onclick="runCalibration()"
+              id="calibBtn"
+              class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-bold transition flex items-center gap-2 w-full md:w-auto justify-center"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                ></path>
+              </svg>
+              Run Calibration
+            </button>
+            <div class="flex-grow grid grid-cols-3 gap-4 w-full">
+              <div class="bg-gray-900/50 p-3 rounded border border-gray-700">
+                <span class="text-xs text-gray-500 uppercase block"
+                  >Motor 1 Max</span
+                >
+                <span id="calib-m1" class="font-mono text-lg text-blue-300"
+                  >---</span
+                >
+              </div>
+              <div class="bg-gray-900/50 p-3 rounded border border-gray-700">
+                <span class="text-xs text-gray-500 uppercase block"
+                  >Motor 2 Max</span
+                >
+                <span id="calib-m2" class="font-mono text-lg text-green-300"
+                  >---</span
+                >
+              </div>
+              <div class="bg-gray-900/50 p-3 rounded border border-gray-700">
+                <span class="text-xs text-gray-500 uppercase block"
+                  >Motor 3 Max</span
+                >
+                <span id="calib-m3" class="font-mono text-lg text-red-300"
+                  >---</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motor 1 Control -->
+        <div
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm relative overflow-hidden"
+        >
+          <div class="absolute top-0 right-0 p-4 opacity-10">
+            <span class="text-6xl font-bold">1</span>
+          </div>
+          <h2
+            class="text-lg font-semibold mb-4 text-blue-400 border-b border-gray-700 pb-2"
+          >
+            Motor 1 (X-Axis)
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Status -->
+            <div class="bg-gray-900/50 p-4 rounded-lg">
+              <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Position</span>
+                <span id="m1-pos" class="font-mono font-bold text-blue-300"
+                  >---</span
+                >
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Status</span>
+                <span id="m1-status" class="font-mono text-gray-300">---</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400 text-sm">Limits</span>
+                <div class="flex gap-2">
+                  <span
+                    id="m1-limit-l"
+                    class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-500"
+                    >L</span
+                  >
+                  <span
+                    id="m1-limit-r"
+                    class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-500"
+                    >R</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="space-y-3">
+              <div class="flex gap-2">
+                <button
+                  onclick="moveRel(1, -100)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  -100
+                </button>
+                <button
+                  onclick="moveRel(1, -10)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  -10
+                </button>
+                <button
+                  onclick="moveRel(1, 10)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  +10
+                </button>
+                <button
+                  onclick="moveRel(1, 100)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  +100
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <input
+                  type="number"
+                  id="m1-target"
+                  placeholder="Target Pos"
+                  class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2 w-full text-sm"
+                />
+                <button
+                  onclick="moveTo(1)"
+                  class="bg-blue-600 hover:bg-blue-500 px-4 rounded text-white text-sm"
+                >
+                  Go
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  onclick="controller.setHome(1)"
+                  class="flex-1 bg-purple-900/50 hover:bg-purple-800 text-purple-200 py-1.5 rounded text-xs"
+                >
+                  Set Home
+                </button>
+                <button
+                  onclick="controller.stop(1)"
+                  class="flex-1 bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 py-1.5 rounded text-xs"
+                >
+                  Stop
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motor 2 Control -->
+        <div
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm relative overflow-hidden"
+        >
+          <div class="absolute top-0 right-0 p-4 opacity-10">
+            <span class="text-6xl font-bold">2</span>
+          </div>
+          <h2
+            class="text-lg font-semibold mb-4 text-green-400 border-b border-gray-700 pb-2"
+          >
+            Motor 2 (Y-Axis)
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Status -->
+            <div class="bg-gray-900/50 p-4 rounded-lg">
+              <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Position</span>
+                <span id="m2-pos" class="font-mono font-bold text-green-300"
+                  >---</span
+                >
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Status</span>
+                <span id="m2-status" class="font-mono text-gray-300">---</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400 text-sm">Limits</span>
+                <div class="flex gap-2">
+                  <span
+                    id="m2-limit-l"
+                    class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-500"
+                    >L</span
+                  >
+                  <span
+                    id="m2-limit-r"
+                    class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-500"
+                    >R</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="space-y-3">
+              <div class="flex gap-2">
+                <button
+                  onclick="moveRel(2, -100)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  -100
+                </button>
+                <button
+                  onclick="moveRel(2, -10)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  -10
+                </button>
+                <button
+                  onclick="moveRel(2, 10)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  +10
+                </button>
+                <button
+                  onclick="moveRel(2, 100)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  +100
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <input
+                  type="number"
+                  id="m2-target"
+                  placeholder="Target Pos"
+                  class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2 w-full text-sm"
+                />
+                <button
+                  onclick="moveTo(2)"
+                  class="bg-green-600 hover:bg-green-500 px-4 rounded text-white text-sm"
+                >
+                  Go
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  onclick="controller.setHome(2)"
+                  class="flex-1 bg-purple-900/50 hover:bg-purple-800 text-purple-200 py-1.5 rounded text-xs"
+                >
+                  Set Home
+                </button>
+                <button
+                  onclick="controller.stop(2)"
+                  class="flex-1 bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 py-1.5 rounded text-xs"
+                >
+                  Stop
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motor 3 Control -->
+        <div
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm relative overflow-hidden"
+        >
+          <div class="absolute top-0 right-0 p-4 opacity-10">
+            <span class="text-6xl font-bold">3</span>
+          </div>
+          <h2
+            class="text-lg font-semibold mb-4 text-red-400 border-b border-gray-700 pb-2"
+          >
+            Motor 3 (Z-Axis)
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Status -->
+            <div class="bg-gray-900/50 p-4 rounded-lg">
+              <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Position</span>
+                <span id="m3-pos" class="font-mono font-bold text-red-300"
+                  >---</span
+                >
+              </div>
+              <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Status</span>
+                <span id="m3-status" class="font-mono text-gray-300">---</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400 text-sm">Limits</span>
+                <div class="flex gap-2">
+                  <span
+                    id="m3-limit-l"
+                    class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-500"
+                    >L</span
+                  >
+                  <span
+                    id="m3-limit-r"
+                    class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-500"
+                    >R</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="space-y-3">
+              <div class="flex gap-2">
+                <button
+                  onclick="moveRel(3, -100)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  -100
+                </button>
+                <button
+                  onclick="moveRel(3, -10)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  -10
+                </button>
+                <button
+                  onclick="moveRel(3, 10)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  +10
+                </button>
+                <button
+                  onclick="moveRel(3, 100)"
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm font-mono"
+                >
+                  +100
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <input
+                  type="number"
+                  id="m3-target"
+                  placeholder="Target Pos"
+                  class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2 w-full text-sm"
+                />
+                <button
+                  onclick="moveTo(3)"
+                  class="bg-red-600 hover:bg-red-500 px-4 rounded text-white text-sm"
+                >
+                  Go
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  onclick="controller.setHome(3)"
+                  class="flex-1 bg-purple-900/50 hover:bg-purple-800 text-purple-200 py-1.5 rounded text-xs"
+                >
+                  Set Home
+                </button>
+                <button
+                  onclick="controller.stop(3)"
+                  class="flex-1 bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 py-1.5 rounded text-xs"
+                >
+                  Stop
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool Controller -->
+        <div
+          class="bg-gray-800 rounded-xl p-6 border border-purple-700/50 shadow-sm"
+        >
+          <h2
+            class="text-lg font-semibold mb-4 text-purple-300 border-b border-purple-700/50 pb-2 flex items-center gap-2"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.066z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              ></path>
+            </svg>
+            Tool Controller (AUX)
+          </h2>
+
+          <!-- Query Tools Button -->
+          <div class="mb-4">
+            <button
+              id="queryToolsBtn"
+              onclick="queryToolCommands()"
+              class="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                ></path>
+              </svg>
+              Query Available Tools (m?)
+            </button>
+          </div>
+
+          <!-- Tool Commands Container (Dynamic) -->
+          <div id="toolCommandsContainer" class="hidden">
+            <div
+              class="text-xs text-gray-500 mb-3 border-b border-gray-700 pb-2"
+            >
+              <span id="toolName" class="text-purple-300 font-semibold"></span>
+            </div>
+            <div
+              id="toolCommandsList"
+              class="grid grid-cols-1 md:grid-cols-2 gap-3"
+            >
+              <!-- Dynamic tool command buttons will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Loading State -->
+          <div id="toolLoadingState" class="hidden text-center py-4">
+            <div
+              class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400 mx-auto"
+            ></div>
+            <p class="text-gray-500 text-xs mt-2">Querying tool commands...</p>
+          </div>
+
+          <!-- Error State -->
+          <div
+            id="toolErrorState"
+            class="hidden bg-red-900/30 border border-red-700/50 rounded-lg p-3 text-red-300 text-sm"
+          >
+            <span id="toolErrorMsg"></span>
+          </div>
+
+          <!-- Tool Log -->
+          <div id="toolLogContainer" class="hidden mt-4">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="text-sm font-semibold text-purple-300">
+                Tool Response Log
+              </h3>
+              <button
+                onclick="clearToolLog()"
+                class="text-xs text-gray-500 hover:text-white"
+              >
+                Clear
+              </button>
+            </div>
+            <div
+              id="toolLogArea"
+              class="bg-gray-900/50 border border-gray-700 rounded-lg p-3 h-32 overflow-y-auto font-mono text-xs text-gray-400 space-y-1"
+            >
+              <div class="text-gray-600 italic">No tool responses yet...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Logs & Config -->
+      <div class="space-y-6 flex flex-col h-full">
+        <!-- Auto-Refresh Toggle -->
+        <div
+          class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-sm"
+        >
+          <label class="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              id="autoRefresh"
+              class="sr-only peer"
+              onchange="toggleAutoRefresh()"
+            />
+            <div
+              class="relative w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
+            ></div>
+            <span class="ms-3 text-sm font-medium text-gray-300"
+              >Auto-refresh Status (1s)</span
+            >
+          </label>
+        </div>
+
+        <div
+          class="bg-gray-800 rounded-xl border border-gray-700 shadow-sm flex flex-col h-64 mt-6"
+        >
+          <div
+            class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800"
+          >
+            <h2 class="font-semibold text-gray-300 flex items-center gap-2">
+              <svg
+                class="w-4 h-4 text-blue-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                ></path>
+              </svg>
+              Command Queue
+            </h2>
+            <div class="flex gap-2">
+              <label
+                class="flex items-center gap-2 cursor-pointer text-xs text-gray-400 hover:text-white"
+              >
+                <input
+                  type="checkbox"
+                  id="showHistoryBtn"
+                  onchange="toggleQueueHistory()"
+                  class="rounded bg-gray-700 border-gray-600"
+                />
+                Show History
+              </label>
+              <button
+                onclick="clearQueueList()"
+                class="text-xs text-red-400 hover:text-red-300 border border-red-900/50 px-2 py-1 rounded bg-red-900/20"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+          <div
+            id="queueList"
+            class="flex-grow p-2 overflow-y-auto bg-gray-900/50 space-y-1"
+          >
+            <div
+              class="text-center text-gray-600 text-xs italic py-4"
+              id="emptyQueueMsg"
+            >
+              No commands in queue
+            </div>
+          </div>
+        </div>
+        <!-- Position Map (3D) -->
+        <div
+          id="chartContainer"
+          class="hidden bg-gray-800 rounded-xl border border-gray-700 shadow-sm p-4 flex flex-col"
+        >
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="font-semibold text-gray-300">3D Position Map</h2>
+            <div class="flex gap-3 text-xs text-gray-400">
+              <label
+                class="flex items-center gap-1 cursor-pointer hover:text-white"
+                ><input
+                  type="checkbox"
+                  id="flipX"
+                  onchange="update3DView()"
+                  class="rounded bg-gray-700 border-gray-600"
+                />
+                Flip X</label
+              >
+              <label
+                class="flex items-center gap-1 cursor-pointer hover:text-white"
+                ><input
+                  type="checkbox"
+                  id="flipY"
+                  onchange="update3DView()"
+                  class="rounded bg-gray-700 border-gray-600"
+                />
+                Flip Y</label
+              >
+              <label
+                class="flex items-center gap-1 cursor-pointer hover:text-white"
+                ><input
+                  type="checkbox"
+                  id="flipZ"
+                  onchange="update3DView()"
+                  class="rounded bg-gray-700 border-gray-600"
+                />
+                Flip Z</label
+              >
+            </div>
+          </div>
+          <div
+            id="three-canvas"
+            class="w-full h-[400px] rounded border border-gray-700 overflow-hidden relative bg-gray-900"
+          >
+            <!-- Canvas injected here -->
+          </div>
+          <p class="text-[10px] text-gray-500 mt-2 text-center">
+            Left Click: Rotate | Right Click: Pan | Scroll: Zoom | Shift+Click
+            on Plane: Move X/Y
+          </p>
+        </div>
+
+        <!-- Logs -->
+        <div
+          class="bg-gray-800 rounded-xl border border-gray-700 shadow-sm flex flex-col flex-grow overflow-hidden h-96 lg:h-auto"
+        >
+          <div
+            class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800"
+          >
+            <h2 class="font-semibold text-gray-300">Device Log</h2>
+            <button
+              onclick="clearLog()"
+              class="text-xs text-gray-500 hover:text-white"
+            >
+              Clear
+            </button>
+          </div>
+          <div
+            id="logArea"
+            class="flex-grow p-4 font-mono text-xs overflow-y-auto bg-gray-900 text-gray-400 space-y-1"
+          >
+            <div class="text-gray-600 italic">Waiting for connection...</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const controller = new MotorController();
+      let refreshInterval = null;
+      let maxPos1 = 0;
+      let maxPos2 = 0;
+      let maxPos3 = 0;
+      let currentPos1 = 0;
+      let currentPos2 = 0;
+      let currentPos3 = 0;
+
+      // UI Elements
+      const connectBtn = document.getElementById("connectBtn");
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+      const logArea = document.getElementById("logArea");
+
+      // Connect Button Handler
+      connectBtn.addEventListener("click", async () => {
+        if (controller.isConnected) {
+          await controller.disconnect();
+          updateConnectionUI(false);
+        } else {
+          const success = await controller.connect();
+          if (success) {
+            updateConnectionUI(true);
+            // Initial status fetch
+            setTimeout(() => controller.getDetailedStatus(0), 500);
+          }
+        }
+      });
+
+      function updateConnectionUI(connected) {
+        if (connected) {
+          connectBtn.textContent = "Disconnect";
+          connectBtn.classList.replace("bg-blue-600", "bg-red-600");
+          connectBtn.classList.replace("hover:bg-blue-500", "hover:bg-red-500");
+          statusDot.classList.replace("bg-red-500", "bg-green-500");
+          statusText.textContent = "Connected";
+          statusText.classList.add("text-green-400");
+          log("System", "Connected to serial port");
+        } else {
+          connectBtn.textContent = "Connect Device";
+          connectBtn.classList.replace("bg-red-600", "bg-blue-600");
+          connectBtn.classList.replace("hover:bg-red-500", "hover:bg-blue-500");
+          statusDot.classList.replace("bg-green-500", "bg-red-500");
+          statusText.textContent = "Disconnected";
+          statusText.classList.remove("text-green-400");
+          log("System", "Disconnected");
+          stopAutoRefresh();
+        }
+      }
+
+      // Data Handlers
+      controller.onData = (data) => {
+        // Log JSON messages
+        if (data.type) {
+          const color =
+            data.type === "ERROR"
+              ? "text-red-400"
+              : data.type === "WARNING"
+              ? "text-yellow-400"
+              : data.type === "AUX"
+              ? "text-purple-400"
+              : "text-blue-400";
+
+          // แปลง message เป็น string ถ้าเป็น object
+          let messageStr = data.message;
+          if (typeof data.message === "object") {
+            messageStr = JSON.stringify(data.message);
+          }
+
+          log(
+            "Device",
+            `<span class="${color}">[${data.type}]</span> ${messageStr}`
+          );
+          // AUX response is now handled internally by motor_controller.js
+        } else {
+          // Handle Status Updates
+          updateMotorStatus(data);
+        }
+      };
+
+      controller.onRawData = (text) => {
+        // Optional: Log raw text if needed, but might be too noisy
+        // log('Raw', text);
+      };
+
+      function updateMotorStatus(data) {
+        // Handle single motor update
+        if (data.motor) {
+          updateSingleMotorUI(data);
+        }
+        // Handle both motors update (if array)
+        if (data.motors && Array.isArray(data.motors)) {
+          data.motors.forEach((m) => updateSingleMotorUI(m));
+        }
+      }
+
+      function updateSingleMotorUI(data) {
+        const id =
+          data.motor === "Motor1" || data.motorName === "Motor1"
+            ? "1"
+            : data.motor === "Motor2" || data.motorName === "Motor2"
+            ? "2"
+            : data.motor === "Motor3" || data.motorName === "Motor3"
+            ? "3"
+            : null;
+
+        if (!id) return;
+
+        if (data.position !== undefined) {
+          document.getElementById(`m${id}-pos`).textContent = data.position;
+          if (id === "1") currentPos1 = data.position;
+          if (id === "2") currentPos2 = data.position;
+          if (id === "3") currentPos3 = data.position;
+          updateChartMarker();
+        }
+        if (data.status) {
+          document.getElementById(`m${id}-status`).textContent = data.status;
+        }
+
+        // Limits
+        if (data.limitLeft !== undefined) {
+          const el = document.getElementById(`m${id}-limit-l`);
+          if (data.limitLeft) {
+            el.classList.remove("bg-gray-700", "text-gray-500");
+            el.classList.add("bg-red-900", "text-red-200");
+          } else {
+            el.classList.add("bg-gray-700", "text-gray-500");
+            el.classList.remove("bg-red-900", "text-red-200");
+          }
+        }
+        if (data.limitRight !== undefined) {
+          const el = document.getElementById(`m${id}-limit-r`);
+          if (data.limitRight) {
+            el.classList.remove("bg-gray-700", "text-gray-500");
+            el.classList.add("bg-red-900", "text-red-200");
+          } else {
+            el.classList.add("bg-gray-700", "text-gray-500");
+            el.classList.remove("bg-red-900", "text-red-200");
+          }
+        }
+      }
+
+      // Helper Functions
+      function log(source, message) {
+        const time = new Date().toLocaleTimeString();
+        const entry = document.createElement("div");
+        entry.innerHTML = `<span class="text-gray-500">[${time}]</span> <span class="font-bold text-gray-400">${source}:</span> ${message}`;
+        logArea.appendChild(entry);
+        logArea.scrollTop = logArea.scrollHeight;
+      }
+
+      function clearLog() {
+        logArea.innerHTML = "";
+      }
+
+      // Tool Log Functions
+      function toolLog(message) {
+        const toolLogArea = document.getElementById("toolLogArea");
+        const time = new Date().toLocaleTimeString();
+
+        // ลบ placeholder ถ้ามี
+        const placeholder = toolLogArea.querySelector(".italic");
+        if (placeholder) placeholder.remove();
+
+        const entry = document.createElement("div");
+        entry.innerHTML = `<span class="text-gray-600">[${time}]</span> ${message}`;
+        toolLogArea.appendChild(entry);
+        toolLogArea.scrollTop = toolLogArea.scrollHeight;
+      }
+
+      function clearToolLog() {
+        const toolLogArea = document.getElementById("toolLogArea");
+        toolLogArea.innerHTML =
+          '<div class="text-gray-600 italic">No tool responses yet...</div>';
+      }
+
+      // Control Wrappers
+      function stopAll() {
+        controller.stop(0);
+      }
+      function emergencyStopAll() {
+        controller.emergencyStop(0);
+      }
+      function enableAll() {
+        controller.enable(0);
+      }
+      function disableAll() {
+        controller.disable(0);
+      }
+
+      function setGlobalSpeed() {
+        const val = document.getElementById("globalSpeed").value;
+        if (val) controller.setSpeed(val);
+      }
+
+      function setGlobalAccel() {
+        const val = document.getElementById("globalAccel").value;
+        if (val) controller.setAcceleration(val);
+      }
+
+      function setGlobalLimitComp() {
+        const val = document.getElementById("globalLimitComp").value;
+        if (val) controller.setLimitCompensation(val);
+      }
+
+      function moveRel(id, steps) {
+        controller.moveRelative(id, steps);
+      }
+
+      function moveTo(id) {
+        const val = document.getElementById(`m${id}-target`).value;
+        if (val) controller.moveAbsolute(id, val);
+      }
+
+      /*
+      async function runCalibration() {
+        const btn = document.getElementById("calibBtn");
+        const m1Display = document.getElementById("calib-m1");
+        const m2Display = document.getElementById("calib-m2");
+        const m3Display = document.getElementById("calib-m3");
+
+        if (!controller.isConnected) {
+          alert("Please connect to the device first.");
+          return;
+        }
+
+        if (
+          !confirm(
+            "WARNING: Calibration will move motors to limits. Ensure path is clear. Continue?"
+          )
+        ) {
+          return;
+        }
+
+        try {
+          btn.disabled = true;
+          btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Calibrating...`;
+          m1Display.textContent = "---";
+          m2Display.textContent = "---";
+          m3Display.textContent = "---";
+
+          // Stop auto-refresh during calibration to avoid interference
+          const wasAutoRefreshing =
+            document.getElementById("autoRefresh").checked;
+          if (wasAutoRefreshing) stopAutoRefresh();
+
+          log("System", "Starting calibration sequence...");
+          const results = await controller.calibration();
+
+          m1Display.textContent = results.motor1;
+          m2Display.textContent = results.motor2;
+          m3Display.textContent = results.motor3;
+          log(
+            "System",
+            `Calibration Complete. M1: ${results.motor1}, M2: ${results.motor2}, M3: ${results.motor3}`
+          );
+
+          // Initialize Chart (3D Map)
+          init3DChart(results.motor1, results.motor2, results.motor3);
+
+          if (wasAutoRefreshing) {
+            document.getElementById("autoRefresh").checked = true;
+            toggleAutoRefresh();
+          }
+        } catch (error) {
+          log("Error", `Calibration failed: ${error.message}`);
+          alert(`Calibration failed: ${error.message}`);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg> Run Calibration`;
+        }
+      }
+*/
+      // 3D Chart Functions
+      let scene, camera, renderer, controls;
+      let motorMarker, targetMarker, workspaceBox;
+      let raycaster, mouse;
+      let is3DInitialized = false;
+      let flipX = false,
+        flipY = false,
+        flipZ = false;
+
+      function init3DChart(m1, m2, m3) {
+        maxPos1 = m1;
+        maxPos2 = m2;
+        maxPos3 = m3;
+
+        const container = document.getElementById("chartContainer");
+        const canvasContainer = document.getElementById("three-canvas");
+        container.classList.remove("hidden");
+
+        // ถ้ายังไม่เคยสร้าง -> สร้าง Scene, Camera, Renderer ใหม่
+        if (!is3DInitialized) {
+          scene = new THREE.Scene();
+          scene.background = new THREE.Color(0x111827);
+
+          const aspect =
+            canvasContainer.clientWidth / canvasContainer.clientHeight;
+          camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100000);
+
+          renderer = new THREE.WebGLRenderer({ antialias: true });
+          renderer.setSize(
+            canvasContainer.clientWidth,
+            canvasContainer.clientHeight
+          );
+          canvasContainer.innerHTML = "";
+          canvasContainer.appendChild(renderer.domElement);
+
+          controls = new THREE.OrbitControls(camera, renderer.domElement);
+          controls.enableDamping = true;
+
+          const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+          scene.add(ambientLight);
+          const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+          dirLight.position.set(10, 20, 10);
+          scene.add(dirLight);
+
+          // Grid (สร้างครั้งเดียวพอ)
+          const gridSize = Math.max(20000, maxPos1, maxPos2) * 2;
+          const gridHelper = new THREE.GridHelper(
+            gridSize,
+            20,
+            0x374151,
+            0x1f2937
+          );
+          //gridHelper.position.set(maxPos1 / 2, 0, maxPos2 / 2); // Center Grid?
+          scene.add(gridHelper);
+
+          // Markers
+          const sphereGeo = new THREE.SphereGeometry(
+            Math.min(maxPos1 || 1000, maxPos2 || 1000) * 0.03 || 50,
+            32,
+            32
+          );
+          motorMarker = new THREE.Mesh(
+            sphereGeo,
+            new THREE.MeshPhongMaterial({ color: 0x4ade80 })
+          );
+          scene.add(motorMarker);
+
+          targetMarker = new THREE.Mesh(
+            sphereGeo,
+            new THREE.MeshPhongMaterial({
+              color: 0x3b82f6,
+              transparent: true,
+              opacity: 0.7,
+            })
+          );
+          targetMarker.visible = false;
+          scene.add(targetMarker);
+
+          // Raycaster Events (Code เดิม)
+          raycaster = new THREE.Raycaster();
+          mouse = new THREE.Vector2();
+          let isDragging = false;
+          let mouseDownPos = { x: 0, y: 0 };
+          renderer.domElement.addEventListener("mousedown", (e) => {
+            isDragging = false;
+            mouseDownPos = { x: e.clientX, y: e.clientY };
+          });
+          renderer.domElement.addEventListener("mousemove", (e) => {
+            if (
+              Math.abs(e.clientX - mouseDownPos.x) > 5 ||
+              Math.abs(e.clientY - mouseDownPos.y) > 5
+            )
+              isDragging = true;
+          });
+          renderer.domElement.addEventListener("mouseup", (e) => {
+            if (!isDragging && e.shiftKey) onCanvasClick(e);
+          });
+          window.addEventListener("resize", onWindowResize, false);
+
+          animate();
+          is3DInitialized = true;
+        }
+
+        // --- ส่วนอัปเดต (ทำงานทุกครั้งที่เรียก init3DChart) ---
+
+        // 1. อัปเดตมุมกล้องให้เห็นครบทั้งเครื่อง
+        const maxDim = Math.max(maxPos1, maxPos2, maxPos3 || 100);
+        if (camera) {
+          // ขยับกล้องถอยออกมาหน่อย
+          camera.position.set(maxDim * 1.2, maxDim * 1.2, maxDim * 1.2);
+          camera.lookAt(maxPos1 / 2, (maxPos3 || 0) / 2, maxPos2 / 2);
+          camera.updateProjectionMatrix();
+        }
+
+        // 2. สร้างกล่อง Workspace ใหม่ (ลบอันเก่าทิ้งก่อน)
+        if (scene) {
+          if (workspaceBox) scene.remove(workspaceBox);
+
+          const geometry = new THREE.BoxGeometry(
+            maxPos1,
+            maxPos3 || 1,
+            maxPos2
+          );
+          geometry.translate(maxPos1 / 2, (maxPos3 || 0) / 2, maxPos2 / 2);
+          const edges = new THREE.EdgesGeometry(geometry);
+
+          // ใช้ Material ที่ถูกต้องตามที่แก้ไปรอบก่อน
+          workspaceBox = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x4b5563 })
+          );
+          scene.add(workspaceBox);
+        }
+      }
+      function onWindowResize() {
+        if (!camera || !renderer) return;
+        const canvasContainer = document.getElementById("three-canvas");
+        camera.aspect =
+          canvasContainer.clientWidth / canvasContainer.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(
+          canvasContainer.clientWidth,
+          canvasContainer.clientHeight
+        );
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        if (controls) controls.update();
+        if (renderer && scene && camera) renderer.render(scene, camera);
+      }
+
+      function update3DView() {
+        flipX = document.getElementById("flipX").checked;
+        flipY = document.getElementById("flipY").checked;
+        flipZ = document.getElementById("flipZ").checked;
+        updateChartMarker();
+      }
+
+      function updateChartMarker() {
+        if (!is3DInitialized || !motorMarker) return;
+
+        let x = flipX ? maxPos1 - currentPos1 : currentPos1;
+        let y = flipZ ? maxPos3 - currentPos3 : currentPos3;
+        let z = flipY ? maxPos2 - currentPos2 : currentPos2;
+
+        motorMarker.position.set(x, y, z);
+      }
+
+      function onCanvasClick(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        const currentVisualY = motorMarker.position.y;
+        const plane = new THREE.Plane(
+          new THREE.Vector3(0, 1, 0),
+          -currentVisualY
+        );
+        const target = new THREE.Vector3();
+
+        raycaster.ray.intersectPlane(plane, target);
+
+        if (target) {
+          let targetMotorX = flipX ? maxPos1 - target.x : target.x;
+          let targetMotorY = flipY ? maxPos2 - target.z : target.z;
+
+          targetMotorX = Math.max(
+            0,
+            Math.min(maxPos1, Math.round(targetMotorX))
+          );
+          targetMotorY = Math.max(
+            0,
+            Math.min(maxPos2, Math.round(targetMotorY))
+          );
+
+          targetMarker.position.set(target.x, currentVisualY, target.z);
+          targetMarker.visible = true;
+          setTimeout(() => (targetMarker.visible = false), 1000);
+
+          log(
+            "System",
+            `Moving to: X${targetMotorX}, Y${targetMotorY}, Z${currentPos3}`
+          );
+          controller.moveAll(targetMotorX, targetMotorY, currentPos3);
+        }
+      }
+      // Auto Refresh
+      function toggleAutoRefresh() {
+        const cb = document.getElementById("autoRefresh");
+        if (cb.checked) {
+          refreshInterval = setInterval(() => {
+            if (controller.isConnected) controller.getDetailedStatus(0);
+          }, 1000);
+        } else {
+          stopAutoRefresh();
+        }
+      }
+
+      function stopAutoRefresh() {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+          refreshInterval = null;
+        }
+        document.getElementById("autoRefresh").checked = false;
+      }
+      // ... (ต่อจาก code เดิม) ...
+
+      // --- Queue UI Logic ---
+      const queueListEl = document.getElementById("queueList");
+      const emptyMsg = document.getElementById("emptyQueueMsg");
+      let showHistory = false;
+
+      // ... (ต่อจากส่วนสร้าง UI Queue เดิม) ...
+
+      // อัปเดต controller.onQueueUpdate ให้แสดงสถานะ Waiting
+      controller.onQueueUpdate = (action, item) => {
+        if (emptyMsg) emptyMsg.style.display = "none";
+
+        if (action === "clear") {
+          // ✅ เพิ่มตรงนี้: ลบรายการทั้งหมดที่ยังไม่เสร็จ (Pending/Wait)
+          const list = document.getElementById("queueList");
+          // เก็บเฉพาะตัวที่เสร็จแล้ว (Completed) หรือจะลบหมดเลยก็ได้
+          // อันนี้ริโอะเลือกเก็บตัวที่เสร็จแล้วไว้ แต่ลบตัวที่รออยู่ออก
+          const pendingItems = list.querySelectorAll("div:not(.cmd-completed)");
+          pendingItems.forEach((el) => el.remove());
+
+          // ถ้าอยากให้ขึ้นข้อความว่า "Queue Cleared via Stop" ก็ทำได้ตรงนี้
+          return;
+        }
+
+        if (action === "add") {
+          const el = document.createElement("div");
+          el.id = `cmd-${item.id}`;
+          el.className =
+            "flex justify-between items-center p-2 rounded bg-gray-800 border border-gray-700 text-xs transition-all duration-300";
+          el.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500" id="status-${
+                      item.id
+                    }"></span>
+                    <span class="font-mono text-gray-300">${item.command.trim()}</span>
+                </div>
+                <span class="text-gray-500 text-[10px]" id="time-${
+                  item.id
+                }">Queued</span>
+            `;
+          queueListEl.appendChild(el);
+          queueListEl.scrollTop = queueListEl.scrollHeight;
+        } else if (action === "process") {
+          const el = document.getElementById(`cmd-${item.id}`);
+          if (el) {
+            const statusDot = document.getElementById(`status-${item.id}`);
+            const timeText = document.getElementById(`time-${item.id}`);
+
+            el.classList.replace("bg-gray-800", "bg-blue-900/30");
+            el.classList.add("border-blue-500");
+            statusDot.classList.replace("bg-blue-500", "bg-orange-500"); // สีส้ม
+            statusDot.classList.add("animate-pulse");
+
+            // แสดงว่ารออะไรอยู่
+            const count = item.expectations?.count || "?";
+            const type = item.expectations?.type || "CMD";
+            timeText.textContent = `Wait: ${type} (${count})`;
+            timeText.classList.add("text-orange-300");
+          }
+        } else if (action === "complete") {
+          const el = document.getElementById(`cmd-${item.id}`);
+          if (el) {
+            const statusDot = document.getElementById(`status-${item.id}`);
+            const timeText = document.getElementById(`time-${item.id}`);
+
+            statusDot.classList.replace("bg-orange-500", "bg-green-500");
+            statusDot.classList.remove("animate-pulse");
+            el.classList.remove("border-blue-500");
+            el.classList.replace("bg-blue-900/30", "bg-gray-800/50");
+
+            timeText.textContent = "Done";
+            timeText.classList.remove("text-orange-300");
+            timeText.classList.add("text-green-500");
+
+            if (!showHistory) {
+              setTimeout(() => el.classList.add("hidden"), 1000);
+            }
+            el.classList.add("cmd-completed");
+          }
+        } else if (action === "error") {
+          const el = document.getElementById(`cmd-${item.id}`);
+          if (el) {
+            const statusDot = document.getElementById(`status-${item.id}`);
+            const timeText = document.getElementById(`time-${item.id}`);
+            statusDot.classList.remove(
+              "bg-blue-500",
+              "bg-orange-500",
+              "animate-pulse"
+            );
+            statusDot.classList.add("bg-red-500");
+            el.classList.add("border-red-500");
+            timeText.textContent = "Failed";
+            timeText.classList.add("text-red-400");
+          }
+        }
+      };
+
+      // ฟังก์ชัน Calibration ที่คลีนขึ้นมาก
+      async function runCalibration() {
+        const btn = document.getElementById("calibBtn");
+        const m1Display = document.getElementById("calib-m1");
+        const m2Display = document.getElementById("calib-m2");
+        const m3Display = document.getElementById("calib-m3");
+
+        if (!controller.isConnected) {
+          alert("Please connect first.");
+          return;
+        }
+        if (!confirm("Start Calibration? Motors will move.")) return;
+
+        try {
+          btn.disabled = true;
+          btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Calibrating...`;
+
+          // เคลียร์ค่าเก่า
+          m1Display.textContent = "---";
+          m2Display.textContent = "---";
+          m3Display.textContent = "---";
+
+          stopAutoRefresh();
+
+          // 🚀 เรียก Calibration และรอรับผลลัพธ์ (Results)
+          const results = await controller.calibration();
+
+          // ✅ แสดงผลลัพธ์บนหน้าจอ
+          m1Display.textContent = results.motor1;
+          m2Display.textContent = results.motor2;
+          m3Display.textContent = results.motor3;
+
+          log(
+            "System",
+            `Calibration Complete. Size: X=${results.motor1}, Y=${results.motor2}, Z=${results.motor3}`
+          );
+
+          // ✅ ส่งค่าไปวาดกราฟ 3D ทันที!
+          init3DChart(results.motor1, results.motor2, results.motor3);
+        } catch (error) {
+          log("Error", `Calibration failed: ${error.message}`);
+          alert(`Calibration failed: ${error.message}`);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `Run Calibration`;
+          if (document.getElementById("autoRefresh").checked)
+            toggleAutoRefresh();
+        }
+      }
+      function toggleQueueHistory() {
+        showHistory = document.getElementById("showHistoryBtn").checked;
+        const completedItems = document.querySelectorAll(".cmd-completed");
+
+        completedItems.forEach((el) => {
+          if (showHistory) {
+            el.classList.remove("hidden");
+          } else {
+            el.classList.add("hidden");
+          }
+        });
+      }
+
+      function clearQueueList() {
+        // ลบเฉพาะใน UI ไม่ได้ลบใน Logic (เพราะถ้า Logic ยังรันไม่เสร็จ ห้ามลบ)
+        // แต่เพื่อความปลอดภัย ลบเฉพาะตัวที่ completed แล้ว
+        const completedItems = document.querySelectorAll(".cmd-completed");
+        completedItems.forEach((el) => el.remove());
+
+        // ถ้าอยากลบหมดเลย
+        // queueListEl.innerHTML = '<div class="text-center text-gray-600 text-xs italic py-4" id="emptyQueueMsg">No commands in queue</div>';
+      }
+
+      // ===== Tool Controller (AUX) Functions =====
+      // ใช้ระบบจาก motor_controller.js แทน
+
+      // Setup Tool Update Callback - จะถูกเรียกทุก 5 วินาที (ถ้าชื่อเปลี่ยน)
+      controller.onToolUpdate = (toolName, commands) => {
+        log("Tool", `Tool updated: ${toolName} (${commands.length} commands)`);
+        renderToolCommands(toolName, commands);
+        document
+          .getElementById("toolCommandsContainer")
+          .classList.remove("hidden");
+        document.getElementById("toolLoadingState").classList.add("hidden");
+        document.getElementById("toolErrorState").classList.add("hidden");
+      };
+
+      // Manual Query (กดปุ่ม)
+      async function queryToolCommands() {
+        if (!controller.isConnected) {
+          alert("Please connect to the device first.");
+          return;
+        }
+
+        const loadingEl = document.getElementById("toolLoadingState");
+        const containerEl = document.getElementById("toolCommandsContainer");
+        const errorEl = document.getElementById("toolErrorState");
+        const toolLogContainerEl = document.getElementById("toolLogContainer");
+        const queryBtn = document.getElementById("queryToolsBtn");
+
+        // Reset states
+        containerEl.classList.add("hidden");
+        errorEl.classList.add("hidden");
+        loadingEl.classList.remove("hidden");
+        queryBtn.disabled = true;
+
+        try {
+          // ใช้ฟังก์ชันจาก controller
+          const result = await controller.queryToolCommands();
+
+          // อัพเดทข้อมูลใน controller
+          controller.toolName = result.name;
+          controller.toolCommands = result.commands;
+
+          // แสดง UI
+          renderToolCommands(result.name, result.commands);
+          containerEl.classList.remove("hidden");
+          toolLogContainerEl.classList.remove("hidden"); // แสดง Tool Log
+          log(
+            "Tool",
+            `Loaded ${result.commands.length} commands from: ${result.name}`
+          );
+
+          // ปิด auto-refresh แล้ว - query แค่ครั้งเดียวเมื่อกดปุ่ม
+          // controller.startToolRefresh();
+        } catch (error) {
+          console.error("Tool query error:", error);
+          document.getElementById("toolErrorMsg").textContent = error.message;
+          errorEl.classList.remove("hidden");
+          log("Error", `Tool query failed: ${error.message}`);
+        } finally {
+          loadingEl.classList.add("hidden");
+          queryBtn.disabled = false;
+        }
+      }
+
+      function renderToolCommands(toolName, commands) {
+        const nameEl = document.getElementById("toolName");
+        const listEl = document.getElementById("toolCommandsList");
+
+        nameEl.textContent = toolName;
+        listEl.innerHTML = "";
+
+        commands.forEach((cmd, index) => {
+          const cmdEl = document.createElement("div");
+          cmdEl.className =
+            "bg-gray-900/50 border border-gray-700 rounded-lg p-3";
+          cmdEl.id = `tool-cmd-${index}`;
+
+          // สร้าง input field ถ้าจำเป็น
+          let inputHtml = "";
+          if (cmd.inputType && cmd.inputType !== "none") {
+            const inputTypeAttr =
+              cmd.inputType === "float" || cmd.inputType === "int"
+                ? "number"
+                : "text";
+            const stepAttr = cmd.inputType === "float" ? 'step="0.01"' : "";
+            inputHtml = `
+              <input
+                type="${inputTypeAttr}"
+                ${stepAttr}
+                id="tool-input-${index}"
+                placeholder="Value"
+                class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white mb-2 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              />
+            `;
+          }
+
+          // กำหนดสีปุ่มตาม isQueue
+          const btnColor = cmd.isQueue
+            ? "bg-purple-600 hover:bg-purple-500"
+            : "bg-orange-600 hover:bg-orange-500";
+          const queueBadge = cmd.isQueue
+            ? '<span class="text-[9px] bg-purple-900 text-purple-300 px-1 rounded">QUEUE</span>'
+            : '<span class="text-[9px] bg-orange-900 text-orange-300 px-1 rounded">DIRECT</span>';
+
+          cmdEl.innerHTML = `
+            <div class="flex justify-between items-start mb-1">
+              <span class="text-xs font-semibold text-purple-300">${
+                cmd.desc || cmd.cmd
+              }</span>
+              ${queueBadge}
+            </div>
+            <p class="text-[10px] text-gray-500 mb-2 font-mono">${cmd.cmd}</p>
+            ${inputHtml}
+            <button
+              onclick="executeToolCommand(${index})"
+              class="${btnColor} text-white text-xs py-1.5 px-3 rounded w-full font-semibold transition"
+            >
+              Execute
+            </button>
+          `;
+
+          listEl.appendChild(cmdEl);
+        });
+      }
+
+      async function executeToolCommand(index) {
+        const cmd = controller.toolCommands[index];
+        if (!cmd) {
+          log("Error", "Command not found");
+          return;
+        }
+
+        // ดึงค่า input ถ้ามี
+        let value = null;
+        if (cmd.inputType && cmd.inputType !== "none") {
+          const inputEl = document.getElementById(`tool-input-${index}`);
+          value = inputEl?.value?.trim();
+
+          if (!value) {
+            alert(`Please enter a value for ${cmd.cmd}`);
+            return;
+          }
+        }
+
+        try {
+          // สร้าง command string - ถ้ามี <val> ให้ replace, ไม่งั้นต่อท้าย
+          let cmdStr = cmd.cmd;
+          if (value) {
+            if (cmdStr.includes("<val>")) {
+              cmdStr = cmdStr.replace("<val>", value);
+            } else {
+              cmdStr = cmdStr + value;
+            }
+          }
+
+          const fullCommand = `m${cmdStr}`;
+          toolLog(
+            `<span class="text-purple-400">→</span> Sending: <span class="text-cyan-400 font-mono">${fullCommand}</span>`
+          );
+
+          // ใช้ฟังก์ชันจาก controller
+          const result = await controller.executeToolCommand(cmd, value);
+
+          if (cmd.isQueue) {
+            toolLog(
+              `<span class="text-green-400">←</span> <span class="text-green-300">${JSON.stringify(
+                result
+              )}</span>`
+            );
+          } else {
+            toolLog(
+              `<span class="text-orange-400">←</span> <span class="text-orange-300">Direct command sent</span>`
+            );
+          }
+        } catch (error) {
+          toolLog(
+            `<span class="text-red-400">✗</span> Error: ${error.message}`
+          );
+        }
+      }
+    </script>
+  </body>
+</html>

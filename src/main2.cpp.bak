@@ -1,0 +1,404 @@
+#include <Arduino.h>
+#include <TMCStepper.h>
+#include <AccelStepper.h>
+#include <Adafruit_NeoPixel.h>
+
+// --- NeoPixel Configuration ---
+#define NEOPIXEL_PIN 48 
+#define NUM_PIXELS   1 
+Adafruit_NeoPixel pixels(NUM_PIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+
+// --- Pin Configuration ---
+#define RXD1_PIN 17 
+#define TXD1_PIN 18 
+#define EN_PIN   21 
+#define STEP_PIN 16 
+#define DIR_PIN  15 
+
+// --- NeoPixel Configuration ---
+#define NEOPIXEL_PIN 48 
+#define NUM_PIXELS   1 
+
+// --- Stepper Driver Configuration ---
+#define R_SENSE 0.11f
+#define SERIAL_ADDRESS 0
+
+// --- Motor Configuration ---
+#define MOTOR_CURRENT_RMS 800
+#define MICROSTEPS 0 // Full step mode 
+// 0, 2, 4, 8, 16, 32, 64, 128, 256
+
+// --- Calculation ---
+#define STEPS_PER_REVOLUTION (200 * (MICROSTEPS > 0 ? MICROSTEPS : 1))
+#define MAX_SPEED STEPS_PER_REVOLUTION*2
+#define MAX_ACCEL STEPS_PER_REVOLUTION
+
+// --- Object Initialization ---
+TMC2209Stepper driver(&Serial1, R_SENSE, SERIAL_ADDRESS);
+
+class StepperMotor {
+private:
+  TMC2209Stepper driver;
+  AccelStepper stepper;
+  uint8_t enPin;
+  uint8_t limitLeftPin;
+  uint8_t limitRightPin;
+  long stepsPerRev;
+  float maxSpeed, maxAccel;
+  bool movementComplete;
+  bool limitEnabled;
+  bool lastLeftState, lastRightState;
+  String motorName;
+
+public:
+  struct Config {
+    HardwareSerial &serialPort;
+    uint8_t rxPin;
+    uint8_t txPin;
+    uint8_t enPin;
+    uint8_t stepPin;
+    uint8_t dirPin;
+    uint8_t limitLeftPin;
+    uint8_t limitRightPin;
+    float rSense;
+    uint8_t serialAddress;
+    uint16_t motorCurrentRMS;
+    uint16_t microsteps;
+    String name;
+  };
+
+  StepperMotor(const Config &cfg)
+      : driver(&cfg.serialPort, cfg.rSense, cfg.serialAddress),
+        stepper(AccelStepper::DRIVER, cfg.stepPin, cfg.dirPin),
+        enPin(cfg.enPin),
+        limitLeftPin(cfg.limitLeftPin),
+        limitRightPin(cfg.limitRightPin),
+        movementComplete(true),
+        limitEnabled(cfg.limitLeftPin != 0 || cfg.limitRightPin != 0),
+        lastLeftState(HIGH),
+        lastRightState(HIGH),
+        motorName(cfg.name) {
+    pinMode(cfg.enPin, OUTPUT);
+    digitalWrite(cfg.enPin, LOW);
+
+    if (cfg.limitLeftPin) {
+      pinMode(cfg.limitLeftPin, INPUT_PULLUP);
+      Serial.print(motorName);
+      Serial.print(" - Left limit switch enabled on pin ");
+      Serial.println(cfg.limitLeftPin);
+    }
+    if (cfg.limitRightPin) {
+      pinMode(cfg.limitRightPin, INPUT_PULLUP);
+      Serial.print(motorName);
+      Serial.print(" - Right limit switch enabled on pin ");
+      Serial.println(cfg.limitRightPin);
+    }
+
+    cfg.serialPort.begin(115200, SERIAL_8N1, cfg.rxPin, cfg.txPin);
+    driver.begin();
+    driver.rms_current(cfg.motorCurrentRMS);
+    driver.microsteps(cfg.microsteps);
+    driver.toff(5);
+    driver.pdn_disable(true);
+
+    stepsPerRev = 200 * (cfg.microsteps > 0 ? cfg.microsteps : 1);
+    maxSpeed = stepsPerRev * 5;
+    maxAccel = maxSpeed / 2;
+    stepper.setMaxSpeed(maxSpeed);
+    stepper.setAcceleration(maxAccel);
+
+    Serial.print(motorName);
+    Serial.print(" - Motor setup complete on EN pin ");
+    Serial.println(enPin);
+  }
+
+  void moveTo(long target) {
+    // if((digitalRead(limitLeftPin) == HIGH) || (digitalRead(limitRightPin) == HIGH))
+    // {
+    stepper.moveTo(target);
+    movementComplete = false;
+    Serial.print(motorName);
+    Serial.print(" - Moving to target: ");
+    Serial.println(target);
+    // }
+  }
+
+  void move(long steps) {
+   // if switch click = true then return 
+    stepper.move(steps);
+    movementComplete = false;
+    Serial.print(motorName);
+    Serial.print(" - Moving relative: ");
+    Serial.print(steps);
+    Serial.println(" steps");
+  }
+
+  void update() {
+    if (limitEnabled) {
+      bool leftState = limitLeftPin ? digitalRead(limitLeftPin) : HIGH;
+      bool rightState = limitRightPin ? digitalRead(limitRightPin) : HIGH;
+
+      if (limitLeftPin && leftState == HIGH && lastLeftState == LOW) {
+        if (isRunning() && stepper.speed() < 0) {
+          emergencyStop();
+          Serial.print(motorName);
+          Serial.println(" - ⚠️ LEFT LIMIT SWITCH TRIGGERED - EMERGENCY STOP!");
+          stepper.move(250);
+
+          displayPosition();
+          
+        }
+      }
+
+      if (limitRightPin && rightState == HIGH && lastRightState == LOW) {
+        if (isRunning() && stepper.speed() > 0) {
+          emergencyStop();
+          Serial.print(motorName);
+          Serial.println(" - ⚠️ RIGHT LIMIT SWITCH TRIGGERED - EMERGENCY STOP!");
+          stepper.move(-250);
+          displayPosition();
+          
+        }
+      }
+
+      lastLeftState = leftState;
+      lastRightState = rightState;
+    }
+
+    if (stepper.distanceToGo() != 0) {
+      stepper.run();
+    } else if (!movementComplete) {
+      movementComplete = true;
+      Serial.print(motorName);
+      Serial.println(" - Target reached!");
+      displayPosition();
+    }
+  }
+
+  bool isRunning() { return stepper.distanceToGo() != 0; }
+
+  bool isLeftPressed() {
+    return limitLeftPin && digitalRead(limitLeftPin) == LOW;
+  }
+
+  bool isRightPressed() {
+    return limitRightPin && digitalRead(limitRightPin) == LOW;
+  }
+
+  void printLimitStatus() {
+    Serial.print(motorName);
+    Serial.print(" - ");
+    if (!limitEnabled) {
+      Serial.println("Limit switches: DISABLED");
+      return;
+    }
+    Serial.print("Left: ");
+    Serial.print(isLeftPressed() ? "PRESSED ⚠️" : "OK ✓");
+    Serial.print(" | Right: ");
+    Serial.println(isRightPressed() ? "PRESSED ⚠️" : "OK ✓");
+  }
+
+  void stop() {
+    stepper.stop();
+    Serial.print(motorName);
+    Serial.println(" - Motor stopped (decelerating)");
+  }
+
+  void emergencyStop() {
+    stepper.setCurrentPosition(stepper.currentPosition());
+ 
+    Serial.print(motorName);
+    Serial.println(" - EMERGENCY STOP!");
+  }
+
+  long getCurrentPosition() { return stepper.currentPosition(); }
+
+  void displayPosition() {
+    long pos = stepper.currentPosition();
+    Serial.print("┌─────────────────────────────┐\n");
+    Serial.print("│ ");
+    Serial.print(motorName);
+    Serial.println("                     │");
+    Serial.print("│ Position: ");
+    Serial.print(pos);
+    Serial.println(" steps         │");
+    Serial.print("│ Revolutions: ");
+    Serial.print((float)pos / stepsPerRev, 2);
+    Serial.println(" rev    │");
+    Serial.print("│ Status: ");
+    Serial.print(isRunning() ? "MOVING" : "IDLE");
+    Serial.println("          │");
+    if (limitEnabled) {
+      Serial.print("│ Left: ");
+      Serial.print(isLeftPressed() ? "⚠️ " : "OK ");
+      Serial.print(" | Right: ");
+      Serial.print(isRightPressed() ? "⚠️" : "OK");
+      Serial.println(" │");
+    }
+    Serial.println("└─────────────────────────────┘");
+  }
+
+  void setHome() {
+    stepper.setCurrentPosition(0);
+    Serial.print(motorName);
+    Serial.println(" - Home position set");
+  }
+
+  void enable() {
+    digitalWrite(enPin, LOW);
+    Serial.print(motorName);
+    Serial.println(" - Motor enabled");
+  }
+
+  void disable() {
+    digitalWrite(enPin, HIGH);
+    Serial.print(motorName);
+    Serial.println(" - Motor disabled");
+  }
+
+  void setSpeed(float speed) { stepper.setMaxSpeed(speed); }
+  void setAcceleration(float accel) { stepper.setAcceleration(accel); }
+  String getName() { return motorName; }
+};
+
+// ====================================================
+//                 CONFIGURATION
+// ====================================================
+
+StepperMotor::Config M1 = {
+  Serial1,   // UART port
+  18, 17,    // RX, TX
+  21,        // Enable pin
+  16, 15,    // Step, Dir
+  1,         // Left limit pin
+  2,         // Right limit pin
+  0.11f,     // Rsense
+  0,         // UART address
+  800,       // Motor current (mA)
+  0,         // Microsteps (full step)
+  "Motor1"   // Name
+};
+
+StepperMotor::Config M2 = {
+  Serial1,   // UART port
+  10, 11,    // RX, TX
+  20,        // Enable pin
+  12, 13,    // Step, Dir
+  41,        // Left limit pin
+  42,        // Right limit pin
+  0.11f,     // Rsense
+  0,         // UART address
+  800,       // Motor current (mA)
+  0,         // Microsteps (full step)
+  "Motor2"   // Name
+};
+
+StepperMotor motorX(M1);
+StepperMotor motorY(M2);
+
+// ====================================================
+//                     MAIN CODE
+// ====================================================
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {}
+  
+
+
+  Serial.println("\n=== Dual Motor Non-Blocking Stepper Controller ===");
+  Serial.println("Commands:");
+  Serial.println("  1:number   - Motor1: Move to absolute position");
+  Serial.println("  1:+number  - Motor1: Move relative forward");
+  Serial.println("  1:-number  - Motor1: Move relative backward");
+  Serial.println("  2:number   - Motor2: Move to absolute position");
+  Serial.println("  2:+number  - Motor2: Move relative forward");
+  Serial.println("  2:-number  - Motor2: Move relative backward");
+  Serial.println("  s / 1:s / 2:s     - Stop motor(s)");
+  Serial.println("  e / 1:e / 2:e     - Emergency stop motor(s)");
+  Serial.println("  h / 1:h / 2:h     - Set home position");
+  Serial.println("  p / 1:p / 2:p     - Print position");
+  Serial.println("  d / 1:d / 2:d     - Display detailed info");
+  Serial.println("  l / 1:l / 2:l     - Check limit switches");
+  Serial.println("  on / 1:on / 2:on  - Enable motor(s)");
+  Serial.println("  off / 1:off / 2:off - Disable motor(s)");
+  Serial.println("==================================================\n");
+
+  motorX.displayPosition();
+  motorY.displayPosition();
+}
+
+void loop() {
+  motorX.update();
+  motorY.update();
+
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+
+    // Determine which motor (default: both)
+    StepperMotor* targetMotor = nullptr;
+    bool bothMotors = false;
+    String command = input;
+
+    if (input.startsWith("1:")) {
+      targetMotor = &motorX;
+      command = input.substring(2);
+    } else if (input.startsWith("2:")) {
+      targetMotor = &motorY;
+      command = input.substring(2);
+    } else {
+      bothMotors = true;
+    }
+
+    // Execute command
+    if (command.equalsIgnoreCase("s")) {
+      if (bothMotors) { motorX.stop(); motorY.stop(); }
+      else targetMotor->stop();
+    }
+    else if (command.equalsIgnoreCase("e")) {
+      if (bothMotors) { motorX.emergencyStop(); motorY.emergencyStop(); }
+      else targetMotor->emergencyStop();
+    }
+    else if (command.equalsIgnoreCase("h")) {
+      if (bothMotors) { motorX.setHome(); motorY.setHome(); }
+      else targetMotor->setHome();
+    }
+    else if (command.equalsIgnoreCase("p")) {
+      if (bothMotors) {
+        Serial.print("Motor1: "); Serial.println(motorX.getCurrentPosition());
+        Serial.print("Motor2: "); Serial.println(motorY.getCurrentPosition());
+      } else {
+        Serial.println(targetMotor->getCurrentPosition());
+      }
+    }
+    else if (command.equalsIgnoreCase("d")) {
+      if (bothMotors) { motorX.displayPosition(); motorY.displayPosition(); }
+      else targetMotor->displayPosition();
+    }
+    else if (command.equalsIgnoreCase("l")) {
+      if (bothMotors) { motorX.printLimitStatus(); motorY.printLimitStatus(); }
+      else targetMotor->printLimitStatus();
+    }
+    else if (command.equalsIgnoreCase("on")) {
+      if (bothMotors) { motorX.enable(); motorY.enable(); }
+      else targetMotor->enable();
+    }
+    else if (command.equalsIgnoreCase("off")) {
+      if (bothMotors) { motorX.disable(); motorY.disable(); }
+      else targetMotor->disable();
+    }
+    else if (command.startsWith("+") && targetMotor) {
+      targetMotor->move(command.substring(1).toInt());
+    }
+    else if (command.startsWith("-") && targetMotor) {
+      targetMotor->move(command.toInt());
+    }
+    else if (command.length() > 0 && targetMotor) {
+      targetMotor->moveTo(command.toInt());
+    }
+    else if (command.length() > 0) {
+      Serial.println("Error: Movement commands require motor prefix (1: or 2:)");
+      Serial.println("Example: 1:1000 or 2:+500");
+    }
+  }
+}   

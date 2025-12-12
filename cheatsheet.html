@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Motor Controller Cheat Sheet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e2e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-blue: #64b5f6;
+            --accent-green: #81c784;
+            --accent-red: #e57373;
+            --accent-yellow: #ffd54f;
+            --accent-purple: #ba68c8;
+            --border-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header Section */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            color: var(--accent-blue);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .important-note {
+            background-color: rgba(229, 115, 115, 0.2);
+            border-left: 5px solid var(--accent-red);
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .important-note code {
+            background-color: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent-red);
+        }
+
+        /* Grid Layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        /* Card Styling */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 2px solid var(--border-color);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-header i {
+            margin-right: 10px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Tables for commands */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 400;
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Command Code Styling */
+        code.cmd {
+            font-family: 'Fira Code', monospace;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--accent-blue);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .plus { color: var(--accent-green) !important; }
+        .minus { color: var(--accent-red) !important; }
+        .accent-yellow { color: var(--accent-yellow); }
+        .accent-red { color: var(--accent-red); }
+        
+        /* Update Section Highlight */
+        .update-card .card-header {
+            background-color: rgba(255, 213, 79, 0.15);
+            color: var(--accent-yellow);
+            border-bottom-color: var(--accent-yellow);
+        }
+
+        /* Safety Section Highlight */
+        .safety-card .card-header {
+            background-color: rgba(229, 115, 115, 0.15);
+            color: var(--accent-red);
+            border-bottom-color: var(--accent-red);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .grid-container { grid-template-columns: 1fr; }
+            th, td { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Triple Motor Non-Blocking Controller</h1>
+            <h3>Cheat Sheet & Command Reference</h3>
+            <div class="important-note">
+                ⚠️ NOTE: ทุกคำสั่งต้องจบด้วยการกดปุ่ม ENTER (ส่งค่า <code>\n</code>) เสมอ!
+            </div>
+        </header>
+
+        <div class="grid-container">
+            <div class="card update-card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    ⚡ NEW UPDATES: Dynamics Setting (ส่วนที่แก้ไข)
+                </div>
+                <div class="card-body">
+                    <p style="margin-bottom: 15px;">เปลี่ยนหน่วยการตั้งค่าใหม่ ใช้ง่ายขึ้น! ไม่ต้องคำนวณ Step</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>การตั้งค่า</th>
+                                <th>คำสั่ง</th>
+                                <th>หน่วยใหม่</th>
+                                <th>ค่า Default ✅</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="accent-yellow">X: Speed</span> (ความเร็ว)</td>
+                                <td><code class="cmd accent-yellow">x&lt;number&gt;</code></td>
+                                <td>รอบต่อวินาที (Rev/Sec)</td>
+                                <td><strong>3</strong> รอบ/วิ</td>
+                            </tr>
+                            <tr>
+                                <td><span class="accent-yellow">A: Acceleration</span> (ความเร่ง)</td>
+                                <td><code class="cmd accent-yellow">a&lt;number&gt;</code></td>
+                                <td>รอบต่อวินาที² (Rev/Sec²)</td>
+                                <td><strong>1</strong> รอบ/วิ²</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header" style="color: var(--accent-blue);">
+                    🚀 1. Movement Controls (สั่งเคลื่อนที่)
+                </div>
+                <div class="card-body">
+                    <h4>📍 Absolute Position (ไปยังตำแหน่งที่กำหนด)</h4>
+                    <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">อิงจากจุด Home 0</p>
+                    <table>
+                        <tr>
+                            <td><code class="cmd">1:number</code></td>
+                            <td>Motor 1 (X) ไปที่ตำแหน่ง (เช่น <code>1:1000</code>)</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd">2:number</code></td>
+                            <td>Motor 2 (Y) ไปที่ตำแหน่ง (เช่น <code>2:0</code>)</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd">3:number</code></td>
+                            <td>Motor 3 (Z) ไปที่ตำแหน่ง (เช่น <code>3:500</code>)</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd" style="color: var(--accent-purple);">xxx,yyy,zzz</code></td>
+                            <td><strong>Multi Move:</strong> สั่ง 3 ตัวพร้อมกัน (เช่น <code>500,1000,200</code>)</td>
+                        </tr>
+                    </table>
+
+                    <h4 style="margin-top: 20px;">↔️ Relative Jogging (ขยับจากจุดเดิม)</h4>
+                     <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">ขยับ + (หน้า) หรือ - (หลัง)</p>
+                    <table>
+                        <tr>
+                            <td><code class="cmd plus">1:+number</code></td>
+                            <td>M1 ขยับไปข้างหน้า</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd minus">1:-number</code></td>
+                            <td>M1 ขยับถอยหลัง</td>
+                        </tr>
+                         <tr>
+                            <td><code class="cmd plus">2:+number</code></td>
+                            <td>M2 ขยับไปข้างหน้า</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd minus">2:-number</code></td>
+                            <td>M2 ขยับถอยหลัง</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd plus">3:+number</code></td>
+                            <td>M3 ขยับไปข้างหน้า</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd minus">3:-number</code></td>
+                            <td>M3 ขยับถอยหลัง</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card safety-card">
+                <div class="card-header">
+                    🛑 2. Safety & Power (ความปลอดภัย)
+                </div>
+                <div class="card-body">
+                    <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">ใช้ prefix <code>1:</code>, <code>2:</code> หรือ <code>3:</code> เพื่อระบุตัว หรือไม่ใส่เพื่อสั่งรวม</p>
+                    <table>
+                        <tr>
+                            <td style="font-size: 1.5em;">🟡</td>
+                            <td><code class="cmd accent-yellow">s</code> / <code class="cmd accent-yellow">1:s</code> ...</td>
+                            <td><strong>Soft Stop:</strong> หยุดปกติ (นิ่มนวลตามค่า a)</td>
+                        </tr>
+                        <tr style="background-color: rgba(229, 115, 115, 0.1);">
+                            <td style="font-size: 1.5em;">🔴</td>
+                            <td><code class="cmd accent-red">e</code> / <code class="cmd accent-red">1:e</code> ...</td>
+                            <td><strong>EMERGENCY STOP:</strong> หยุดทันที! (กระชาก)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-size: 1.5em;">🔋</td>
+                            <td><code class="cmd plus">on</code> / <code class="cmd plus">1:on</code> ...</td>
+                            <td><strong>Enable:</strong> จ่ายไฟ (มอเตอร์ล็อก)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-size: 1.5em;">🪫</td>
+                            <td><code class="cmd minus">off</code> / <code class="cmd minus">1:off</code> ...</td>
+                            <td><strong>Disable:</strong> ตัดไฟ (มอเตอร์หมุนฟรี)</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header" style="color: var(--accent-green);">
+                     🛠️ 3. Status & Config (สถานะและตั้งค่า)
+                </div>
+                <div class="card-body">
+                   <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">ใช้ prefix <code>1:</code>, <code>2:</code> หรือ <code>3:</code> เพื่อระบุตัว หรือไม่ใส่เพื่อสั่งรวม</p>
+                    <table>
+                        <tr>
+                            <td><code class="cmd">h</code></td>
+                            <td><strong>Set Home:</strong> ตั้งตำแหน่งปัจจุบันเป็น 0</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd">p</code></td>
+                            <td><strong>Print Position:</strong> ดูตำแหน่งปัจจุบัน</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd">d</code></td>
+                            <td><strong>Display Info:</strong> ดูค่าละเอียด (Speed, Accel, State)</td>
+                        </tr>
+                        <tr>
+                            <td><code class="cmd">l</code></td>
+                            <td><strong>Check Limits:</strong> ดูสถานะ Limit Switch</td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom: none;"><code class="cmd accent-purple">i&lt;ratio&gt;</code></td>
+                            <td style="border-bottom: none;"><strong>Limit Offset:</strong> ตั้งค่าชดเชย (เช่น <code>i0.5</code> คือ 50%)</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Created by RIO Assistant for Master Ham 🐹 | 2023
+        </footer>
+    </div>
+</body>
+</html>

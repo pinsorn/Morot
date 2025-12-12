@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dual Motor Controller API Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+      <header class="mb-10 text-center">
+        <h1 class="text-4xl font-bold text-blue-600 mb-2">
+          Triple Motor Controller API
+        </h1>
+        <p class="text-gray-600 text-lg">
+          Documentation for Serial Communication Protocol
+        </p>
+      </header>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Sidebar Navigation -->
+        <nav class="md:col-span-1 space-y-4 sticky top-8 h-fit">
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3
+              class="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm"
+            >
+              Contents
+            </h3>
+            <ul class="space-y-2 text-sm">
+              <li>
+                <a
+                  href="#connection"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Connection Settings</a
+                >
+              </li>
+              <li>
+                <a
+                  href="#command-structure"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Command Structure</a
+                >
+              </li>
+              <li>
+                <a
+                  href="#movement"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Movement Commands</a
+                >
+              </li>
+              <li>
+                <a
+                  href="#control"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Control & Config</a
+                >
+              </li>
+              <li>
+                <a
+                  href="#info"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Information & Status</a
+                >
+              </li>
+              <li>
+                <a
+                  href="#responses"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Device Responses (JSON)</a
+                >
+              </li>
+              <li>
+                <a
+                  href="#status-codes"
+                  class="block text-gray-600 hover:text-blue-600 transition"
+                  >Status Codes Reference</a
+                >
+              </li>
+            </ul>
+          </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="md:col-span-2 space-y-10">
+          <!-- Connection -->
+          <section
+            id="connection"
+            class="bg-white p-8 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+              <span class="bg-blue-100 text-blue-600 p-2 rounded-lg mr-3">
+                <svg
+                  class="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  ></path>
+                </svg>
+              </span>
+              Connection Settings
+            </h2>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="p-4 bg-gray-50 rounded-lg">
+                <span class="block text-xs text-gray-500 uppercase font-bold"
+                  >Baud Rate</span
+                >
+                <span class="text-lg font-mono font-semibold">115200</span>
+              </div>
+              <div class="p-4 bg-gray-50 rounded-lg">
+                <span class="block text-xs text-gray-500 uppercase font-bold"
+                  >Line Ending</span
+                >
+                <span class="text-lg font-mono font-semibold"
+                  >Newline (\n)</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <!-- Command Structure -->
+          <section
+            id="command-structure"
+            class="bg-white p-8 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">
+              Command Structure
+            </h2>
+            <p class="mb-4 text-gray-600">
+              Commands can target a specific motor or both motors
+              simultaneously.
+            </p>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-gray-200">
+                    <th class="py-2 font-semibold text-gray-700">Prefix</th>
+                    <th class="py-2 font-semibold text-gray-700">Target</th>
+                    <th class="py-2 font-semibold text-gray-700">Example</th>
+                  </tr>
+                </thead>
+                <tbody class="text-sm">
+                  <tr class="border-b border-gray-100">
+                    <td class="py-3 font-mono text-blue-600">1:</td>
+                    <td class="py-3">Motor 1 (X)</td>
+                    <td class="py-3 font-mono text-gray-500">1:1000</td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="py-3 font-mono text-blue-600">2:</td>
+                    <td class="py-3">Motor 2 (Y)</td>
+                    <td class="py-3 font-mono text-gray-500">2:s</td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <td class="py-3 font-mono text-blue-600">3:</td>
+                    <td class="py-3">Motor 3 (Z)</td>
+                    <td class="py-3 font-mono text-gray-500">3:500</td>
+                  </tr>
+                  <tr>
+                    <td class="py-3 font-mono text-blue-600">(none)</td>
+                    <td class="py-3">All Motors</td>
+                    <td class="py-3 font-mono text-gray-500">s</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Movement -->
+          <section
+            id="movement"
+            class="bg-white p-8 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">
+              Movement Commands
+            </h2>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="font-bold text-gray-800 mb-2">
+                  Absolute Positioning
+                </h3>
+                <div
+                  class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto mb-2"
+                >
+                  1:&lt;pos&gt; // Move Motor 1 to position<br />
+                  2:&lt;pos&gt; // Move Motor 2 to position<br />
+                  3:&lt;pos&gt; // Move Motor 3 to position<br />
+                  &lt;x&gt;,&lt;y&gt; // Move Motors 1 & 2: x,y<br />
+                  &lt;x&gt;,&lt;y&gt;,&lt;z&gt; // Move all motors: x,y,z
+                </div>
+                <p class="text-sm text-gray-500">
+                  Example:
+                  <code class="bg-gray-100 px-1 rounded">1000,2000,500</code>
+                  moves Motor 1 to 1000, Motor 2 to 2000, Motor 3 to 500.
+                </p>
+              </div>
+
+              <div>
+                <h3 class="font-bold text-gray-800 mb-2">Relative Movement</h3>
+                <div
+                  class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                >
+                  1:+&lt;steps&gt; // Move Motor 1 forward<br />
+                  1:-&lt;steps&gt; // Move Motor 1 backward<br />
+                  2:+&lt;steps&gt; // Move Motor 2 forward<br />
+                  2:-&lt;steps&gt; // Move Motor 2 backward<br />
+                  3:+&lt;steps&gt; // Move Motor 3 forward<br />
+                  3:-&lt;steps&gt; // Move Motor 3 backward
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Control -->
+          <section
+            id="control"
+            class="bg-white p-8 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">
+              Control & Configuration
+            </h2>
+
+            <div class="grid grid-cols-1 gap-4">
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-blue-600"
+                    >s / 1:s / 2:s / 3:s</span
+                  >
+                  <span
+                    class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded"
+                    >Action</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Stop motor(s) with deceleration.
+                </p>
+              </div>
+
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-red-600"
+                    >e / 1:e / 2:e / 3:e</span
+                  >
+                  <span
+                    class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded"
+                    >Emergency</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Emergency stop immediately (hard stop).
+                </p>
+              </div>
+
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-blue-600"
+                    >h / 1:h / 2:h / 3:h</span
+                  >
+                  <span
+                    class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                    >Config</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Set current position as Home (0).
+                </p>
+              </div>
+
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-blue-600"
+                    >off / 1:off / 2:off / 3:off</span
+                  >
+                  <span
+                    class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded"
+                    >Power</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Disable motor driver outputs.
+                </p>
+              </div>
+
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-purple-600"
+                    >x&lt;val&gt; / 1:x&lt;val&gt; / 2:x&lt;val&gt; /
+                    3:x&lt;val&gt;</span
+                  >
+                  <span
+                    class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded"
+                    >Speed</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Set max speed (steps/rev). E.g.,
+                  <code class="bg-gray-100 px-1">x2</code>
+                </p>
+              </div>
+
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-purple-600"
+                    >a&lt;val&gt; / 1:a&lt;val&gt; / 2:a&lt;val&gt; /
+                    3:a&lt;val&gt;</span
+                  >
+                  <span
+                    class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded"
+                    >Accel</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Set acceleration (steps/rev²). E.g.,
+                  <code class="bg-gray-100 px-1">a10</code>
+                </p>
+              </div>
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-mono font-bold text-purple-600"
+                    >m&lt;message&gt;</span
+                  >
+                  <span
+                    class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded"
+                    >Bridge</span
+                  >
+                </div>
+                <p class="text-sm text-gray-600">
+                  Forward message to AUX serial port. E.g.,
+                  <code class="bg-gray-100 px-1">mhello</code>
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Info -->
+          <section
+            id="info"
+            class="bg-white p-8 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">
+              Information Commands
+            </h2>
+            <table class="w-full text-left border-collapse">
+              <tbody class="text-sm">
+                <tr class="border-b border-gray-100">
+                  <td class="py-3 font-mono text-blue-600 font-bold w-24">
+                    p / 1:p / 2:p / 3:p
+                  </td>
+                  <td class="py-3">Get current position (simple JSON).</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                  <td class="py-3 font-mono text-blue-600 font-bold">
+                    d / 1:d / 2:d / 3:d
+                  </td>
+                  <td class="py-3">
+                    Get detailed status (Position, Revolutions, Status, Limits).
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-3 font-mono text-blue-600 font-bold">
+                    l / 1:l / 2:l / 3:l
+                  </td>
+                  <td class="py-3">Check limit switch status.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <!-- Responses -->
+          <section
+            id="responses"
+            class="bg-white p-8 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">
+              Device Responses (JSON)
+            </h2>
+
+            <div class="space-y-8">
+              <!-- General Message -->
+              <div>
+                <h3 class="font-bold text-gray-800 mb-2">
+                  General Status / Error
+                </h3>
+                <div
+                  class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                >
+                  { "type": "INFO", // or "WARNING", "ERROR" "message": "Motor
+                  setup complete", "motor": "Motor1", // Optional "code": 100 //
+                  Status code }
+                </div>
+
+                <h4 class="font-bold text-gray-700 mb-2 text-sm">
+                  Possible Messages
+                </h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-200">
+                        <th class="py-2 font-semibold text-gray-700 w-24">
+                          Type
+                        </th>
+                        <th class="py-2 font-semibold text-gray-700">
+                          Message Pattern
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-gray-600">
+                      <!-- INFO -->
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Motor setup complete on EN pin {pin}</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Left/Right limit switch enabled on pin {pin}</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Target reached!</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Motor stopped (decelerating)</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Home position set</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Motor enabled / disabled</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Max speed set to: {speed}</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Acceleration set to: {accel}</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Limit Compensation Ratio set to: {ratio}</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-blue-600">INFO</td>
+                        <td>Forwarded command to AUX: {message}</td>
+                      </tr>
+
+                      <!-- WARNING -->
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-yellow-600">WARNING</td>
+                        <td>
+                          LEFT/RIGHT LIMIT SWITCH TRIGGERED - STEPPING BACK
+                        </td>
+                      </tr>
+
+                      <!-- ERROR -->
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>
+                          Nothing to stop/emergency stop, motors are idle.
+                        </td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>Cannot set home while motors are running.</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>
+                          Cannot change speed/acceleration while motors are
+                          running.
+                        </td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>
+                          Cannot change limit compensation ratio while motors
+                          are running.
+                        </td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>Motors are already running.</td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>
+                          Cannot disable/move motors while they are running.
+                        </td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>
+                          Both motors command requires comma-separated values
+                        </td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 font-mono text-red-600">ERROR</td>
+                        <td>Unknown command format</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Position Report -->
+              <div>
+                <h3 class="font-bold text-gray-800 mb-2">
+                  Position Report (Command:
+                  <code class="text-blue-400">p</code>)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-xs text-gray-400 mb-1 uppercase">
+                      Single Motor
+                    </p>
+                    <div
+                      class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                    >
+                      { "motorName": "Motor1", "position": 100, "code": 210 }
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-400 mb-1 uppercase">
+                      All Motors
+                    </p>
+                    <div
+                      class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                    >
+                      { "motors": [ { "motorName": "Motor1", "position": 100 },
+                      { "motorName": "Motor2", "position": 200 }, { "motorName":
+                      "Motor3", "position": 50 } ], "code": 210 }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Detailed Status -->
+              <div>
+                <h3 class="font-bold text-gray-800 mb-2">
+                  Detailed Status (Command:
+                  <code class="text-blue-400">d</code>)
+                </h3>
+                <div
+                  class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                >
+                  { "motor": "Motor1", "position": 100, "revolutions": 0.50,
+                  "status": "MOVING", // or "IDLE" "limitLeft": false,
+                  "limitRight": false, "code": 203 }
+                </div>
+                <p class="text-sm text-gray-500 mt-2">
+                  Code varies: 201 (idle), 202 (moving+limit), 203 (moving), 200
+                  (default)
+                </p>
+              </div>
+
+              <!-- AUX Bridge Response -->
+              <div>
+                <h3 class="font-bold text-gray-800 mb-2">
+                  AUX Bridge Response (Command:
+                  <code class="text-blue-400">m</code>)
+                </h3>
+                <div
+                  class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                >
+                  { "type": "AUX", "message": "response from aux device",
+                  "code": 301 }
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <!-- Status Codes Reference -->
+      <section
+        id="status-codes"
+        class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mx-auto max-w-5xl mb-8"
+      >
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">
+          Status Codes Reference
+        </h2>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-gray-200">
+                <th class="py-2 font-semibold text-gray-700">Code</th>
+                <th class="py-2 font-semibold text-gray-700">Type</th>
+                <th class="py-2 font-semibold text-gray-700">Description</th>
+                <th class="py-2 font-semibold text-gray-700">Context</th>
+              </tr>
+            </thead>
+            <tbody class="text-gray-600">
+              <!-- Setup Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">100</td>
+                <td class="py-2">INFO</td>
+                <td>Motor setup complete</td>
+                <td>Motor initialization</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">101</td>
+                <td class="py-2">INFO</td>
+                <td>Left limit switch enabled</td>
+                <td>Motor initialization</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">102</td>
+                <td class="py-2">INFO</td>
+                <td>Right limit switch enabled</td>
+                <td>Motor initialization</td>
+              </tr>
+
+              <!-- Position/Status Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">200</td>
+                <td class="py-2">INFO</td>
+                <td>Position status (default)</td>
+                <td>Position reports</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">201</td>
+                <td class="py-2">INFO</td>
+                <td>Motor idle, no limits pressed</td>
+                <td>Position reports</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">202</td>
+                <td class="py-2">INFO</td>
+                <td>Motor moving with limit pressed</td>
+                <td>Position reports</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">203</td>
+                <td class="py-2">INFO</td>
+                <td>Motor moving, no limits pressed</td>
+                <td>Position reports</td>
+              </tr>
+
+              <!-- Control Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">205</td>
+                <td class="py-2">INFO</td>
+                <td>Max speed set</td>
+                <td>Speed configuration</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">206</td>
+                <td class="py-2">INFO</td>
+                <td>Home position set</td>
+                <td>Home setting</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">207</td>
+                <td class="py-2">INFO</td>
+                <td>Motor enabled</td>
+                <td>Motor control</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">208</td>
+                <td class="py-2">INFO</td>
+                <td>Motor disabled</td>
+                <td>Motor control</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">209</td>
+                <td class="py-2">INFO</td>
+                <td>Acceleration set</td>
+                <td>Acceleration configuration</td>
+              </tr>
+
+              <!-- Movement Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">210</td>
+                <td class="py-2">INFO</td>
+                <td>Position report</td>
+                <td>Position queries</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">211</td>
+                <td class="py-2">INFO</td>
+                <td>Target reached</td>
+                <td>Movement completion</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">212</td>
+                <td class="py-2">INFO</td>
+                <td>Motor stopped (decelerating)</td>
+                <td>Stop command</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">213</td>
+                <td class="py-2">INFO</td>
+                <td>Emergency stop executed</td>
+                <td>Emergency stop</td>
+              </tr>
+
+              <!-- Special Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">300</td>
+                <td class="py-2">INFO</td>
+                <td>Limit compensation ratio set / Command forwarded to AUX</td>
+                <td>Configuration / AUX bridge</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-blue-600">301</td>
+                <td class="py-2">AUX</td>
+                <td>Message from AUX device</td>
+                <td>AUX bridge</td>
+              </tr>
+
+              <!-- Error Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-red-600">403</td>
+                <td class="py-2">ERROR</td>
+                <td>Unknown command format / Invalid multi-motor command</td>
+                <td>Command parsing</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-red-600">404</td>
+                <td class="py-2">INFO</td>
+                <td>Limit switches disabled</td>
+                <td>Limit status query</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-red-600">405</td>
+                <td class="py-2">INFO</td>
+                <td>Limit switch status</td>
+                <td>Limit status query</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-red-600">406</td>
+                <td class="py-2">ERROR</td>
+                <td>Cannot perform action while motors are running</td>
+                <td>Configuration attempts</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-red-600">407</td>
+                <td class="py-2">ERROR</td>
+                <td>Nothing to emergency stop, motors are idle</td>
+                <td>Emergency stop</td>
+              </tr>
+
+              <!-- Warning Codes -->
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-mono text-yellow-600">411</td>
+                <td class="py-2">WARNING</td>
+                <td>LEFT LIMIT SWITCH TRIGGERED - STEPPING BACK</td>
+                <td>Limit switch activation</td>
+              </tr>
+              <tr>
+                <td class="py-2 font-mono text-yellow-600">412</td>
+                <td class="py-2">WARNING</td>
+                <td>RIGHT LIMIT SWITCH TRIGGERED - STEPPING BACK</td>
+                <td>Limit switch activation</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="mt-12 text-center text-gray-400 text-sm">
+        <p>&copy; 2025 Triple Motor Controller Project</p>
+      </footer>
+    </div>
+  </body>
+</html>

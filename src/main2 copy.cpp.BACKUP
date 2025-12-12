@@ -1,0 +1,74 @@
+#include <HardwareSerial.h>
+
+// Communication Pins for Serial1 on ESP32-S3
+const int S3_TX_PIN = 17; // Connect this to C3's RX pin (e.g., GPIO 9)
+const int S3_RX_PIN = 18; // Connect this to C3's TX pin (e.g., GPIO 8)
+
+// Variable to store incoming message from the C3
+String receivedMessage = "";
+
+void setup() {
+  // 1. Initialize USB Serial for debugging/user input
+  Serial.begin(115200);
+  while (!Serial);
+  Serial.println("ESP32-S3 Bidirectional Communicator starting...");
+  
+  // 2. Initialize Hardware Serial (Serial1) for communication with ESP32-C3
+  // Format: SerialX.begin(baudRate, config, rxPin, txPin);
+  // Ensure the C3 is also running at 9600 baud.
+  Serial1.begin(9600, SERIAL_8N1, S3_RX_PIN, S3_TX_PIN);
+
+  Serial.print("Serial1 configured on TX: ");
+  Serial.print(S3_TX_PIN);
+  Serial.print(", RX: ");
+  Serial.println(S3_RX_PIN);
+  
+  Serial.println("\nEnter a message to send to the C3. Will also listen for C3 replies.");
+}
+
+void loop() {
+  // --- 1. SENDER LOGIC (Check for user input on USB Serial) ---
+  if (Serial.available() > 0) {
+    // Read the message from the user
+    String outgoingMessage = Serial.readStringUntil('\n');
+    outgoingMessage.trim(); // Remove whitespace/newlines
+
+    if (outgoingMessage.length() > 0) {
+      // Forward the user's message to the ESP32-C3 via Serial1
+      Serial1.println(outgoingMessage);
+      
+      // Print confirmation to the local debug console
+      Serial.print("-> Forwarded to C3: '");
+      Serial.print(outgoingMessage);
+      Serial.println("'");
+    } else {
+      Serial.println("Empty message ignored.");
+    }
+  }
+
+  // --- 2. RECEIVER LOGIC (Check for data from C3 on Serial1) ---
+  // Non-blocking way to read all available data from Serial1
+  while (Serial1.available()) {
+    char inChar = Serial1.read();
+    
+    // Check if the character is a newline or carriage return (end of message)
+    if (inChar == '\n' || inChar == '\r') {
+      // Process the message once the line break is found
+      receivedMessage.trim();
+
+      if (receivedMessage.length() > 0) {
+        // Print the received message to the USB Serial Monitor
+        Serial.print("<- Received from C3: '");
+        Serial.print(receivedMessage);
+        Serial.println("'");
+      }
+      
+      // Clear the message buffer for the next incoming message
+      receivedMessage = "";
+      
+    } else {
+      // If it's not the end-of-line marker, add the character to the string
+      receivedMessage += inChar;
+    }
+  }
+}
