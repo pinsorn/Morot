@@ -121,6 +121,9 @@ class MotorController {
       if (trimmedLine.startsWith("{")) {
         try {
           const data = JSON.parse(trimmedLine);
+          
+          // 🔍 Debug: Log all parsed JSON
+          console.log("[RX]", data);
 
           // ✅ เพิ่มตรงนี้: อัปเดตสถานะล่าสุดเก็บไว้
           if (data.motor || data.motorName) {
@@ -133,8 +136,29 @@ class MotorController {
           if (this.onData) this.onData(data);
 
           // ===== Handle AUX Tool Response =====
+          // Case 1: Wrapped response { type: "AUX", message: "..." }
           if (data.type === "AUX") {
             this._handleAuxResponse(data);
+          }
+          
+          // Case 2: Direct tool query response (m?) - has "commands" array
+          // Tool ส่ง {"type":"INFO","code":101,"name":"...","commands":[...]}
+          if (data.commands && Array.isArray(data.commands)) {
+            console.log("[Direct Tool Query Response]", data);
+            this._handleAuxResponse(data); // Use same handler
+          }
+          
+          // Case 3: Direct response from tool command (not wrapped)
+          // Tool ส่งตรงๆ เช่น {"type":"SUCCESS","code":201,...}
+          // ตรวจสอบว่าเป็น response จาก tool โดยดู code range (100-402 คือ Torom codes)
+          // และต้องไม่ใช่ motor response (motor response มี motor field)
+          if (data.code && data.code >= 100 && data.code <= 402 && 
+              data.type !== "AUX" && !data.motor && !data.motorName) {
+            // ถ้ากำลังรอ AUX response อยู่ ให้ถือว่าเป็น tool response
+            if (this.currentExpectations?.type === "AUX") {
+              console.log("[AUX Direct Command Response]", data);
+              this._checkQueueExpectationsForAux(data);
+            }
           }
 
           // --- Logic การเช็ค Response เพื่อปลดล็อค Queue ---
@@ -147,8 +171,36 @@ class MotorController {
             );
           }
         } catch (e) {
-          console.warn("Parse error", e);
+          console.warn("Parse error", e, trimmedLine);
         }
+      }
+    }
+  }
+  
+  /**
+   * Handle direct AUX response (not wrapped)
+   */
+  _checkQueueExpectationsForAux(data) {
+    if (!this.currentExpectations || !this.currentCmdPromise) return;
+    if (this.currentExpectations.type !== "AUX") return;
+    
+    const code = data.code;
+    
+    // Error codes
+    if (code === 400 || code === 401 || code === 402) {
+      console.log("[AUX Error]", data);
+      this.currentCmdPromise.reject(
+        new Error(`Tool Error: ${data.message} (Code ${code})`)
+      );
+      return;
+    }
+    
+    // Success codes: 200 (SUCCESS), 201 (TARGET_REACHED)
+    if (code === 200 || code === 201) {
+      console.log("[AUX Success]", data);
+      this.currentExpectations.count--;
+      if (this.currentExpectations.count <= 0) {
+        this.currentCmdPromise.resolve(data);
       }
     }
   }
@@ -160,10 +212,25 @@ class MotorController {
     if (!this.currentExpectations || !this.currentCmdPromise) return;
 
     const exp = this.currentExpectations;
-    const code = data.code;
+    let code = data.code;
+
+    // === Handle AUX Response ===
+    // AUX response มาในรูป { type: "AUX", message: "{...json from tool...}" }
+    // ต้องดึง code จาก message ที่ parse แล้ว
+    if (exp.type === "AUX" && data.type === "AUX") {
+      try {
+        let auxData = typeof data.message === "string" 
+          ? JSON.parse(data.message) 
+          : data.message;
+        code = auxData.code;
+      } catch (e) {
+        console.warn("Failed to parse AUX message for queue check");
+        return;
+      }
+    }
 
     // 1. Error Codes (Fatal) - อันนี้คงเดิม
-    if (code === 406 || code === 407 || code === 403) {
+    if (code === 406 || code === 407 || code === 403 || code === 400 || code === 401 || code === 402) {
       this.currentCmdPromise.reject(
         new Error(`Device Error: ${data.message} (Code ${code})`)
       );
@@ -174,11 +241,15 @@ class MotorController {
     // ถ้าเป็นคำสั่ง MOVE ให้ถือว่า 211(ถึง), 212(สั่งหยุด), 213(ชนลิมิต) คือ "จบงานของมอเตอร์ตัวนั้น"
     const isMoveFinish =
       exp.type === "MOVE" && (code === 211 || code === 212 || code === 213);
+    
+    // AUX Tool: 200 (SUCCESS), 201 (TARGET_REACHED) คือเสร็จ
+    const isAuxFinish =
+      exp.type === "AUX" && (code === 200 || code === 201);
 
     // ถ้าเป็นคำสั่งอื่น ดูตามโพยที่จดมา
     const isExpected = exp.codes.includes(code);
 
-    if (isMoveFinish || isExpected) {
+    if (isMoveFinish || isAuxFinish || isExpected) {
       // ลดจำนวนที่ต้องรอลง 1 แต้ม
       exp.count--;
 
@@ -380,7 +451,11 @@ class MotorController {
     if (cmd.startsWith("a") || cmd.includes(":a"))
       return { type: "ACCEL", codes: [209], count: this._countTargets(cmd) };
     if (cmd.startsWith("i")) return { type: "CONFIG", codes: [300], count: 1 };
-    if (cmd.startsWith("m")) return { type: "AUX", codes: [300], count: 1 };
+    
+    // --- AUX Tool Commands ---
+    // Torom Tool returns: 200 (SUCCESS), 201 (TARGET_REACHED), 100 (INFO)
+    // isQueue commands wait for 200/201, non-queue don't wait
+    if (cmd.startsWith("m")) return { type: "AUX", codes: [200, 201], count: 1 };
 
     // --- 3. Info Commands ---
     if (cmd.includes("d"))
@@ -425,28 +500,61 @@ class MotorController {
   // ================= Tool Controller Methods =================
 
   /**
-   * Handle AUX response from device
+   * Handle AUX response from device (wrapped or direct)
    */
   _handleAuxResponse(data) {
-    if (!this._pendingToolQuery) return;
-
+    console.log("[_handleAuxResponse]", data);
+    
     try {
       let auxData;
 
-      // data.message อาจเป็น string หรือ object
-      if (typeof data.message === "string") {
-        auxData = JSON.parse(data.message);
-      } else {
-        auxData = data.message;
+      // Case 1: Wrapped response { type: "AUX", message: "..." or {...} }
+      if (data.type === "AUX" && data.message !== undefined) {
+        if (typeof data.message === "string") {
+          auxData = JSON.parse(data.message);
+        } else {
+          auxData = data.message;
+        }
+      } 
+      // Case 2: Direct response (data is already the tool response)
+      else {
+        auxData = data;
       }
+      
+      console.log("[AUX Parsed]", auxData);
 
-      // ตรวจสอบว่าเป็น INFO response (code 101 สำหรับ m?)
-      if (auxData.type === "INFO" && auxData.commands) {
-        this._pendingToolQuery.resolve(auxData);
-        this._pendingToolQuery = null;
+      // Handle pending tool query (m?)
+      if (this._pendingToolQuery) {
+        // ตรวจสอบว่าเป็น INFO response (code 101 สำหรับ m?)
+        if (auxData.type === "INFO" && auxData.commands) {
+          console.log("[Tool Query Response]", auxData);
+          this._pendingToolQuery.resolve(auxData);
+          this._pendingToolQuery = null;
+          return;
+        }
+        // หรือ code 101
+        if (auxData.code === 101 && auxData.commands) {
+          console.log("[Tool Query Response by Code]", auxData);
+          this._pendingToolQuery.resolve(auxData);
+          this._pendingToolQuery = null;
+          return;
+        }
       }
     } catch (e) {
-      console.error("Error parsing AUX response:", e);
+      console.error("Error parsing AUX response:", e, data);
+    }
+  }
+  
+  /**
+   * Handle direct tool response (not wrapped in AUX)
+   */
+  _handleDirectToolResponse(data) {
+    console.log("[Direct Tool Response]", data);
+    
+    // Handle pending tool query
+    if (this._pendingToolQuery && data.commands) {
+      this._pendingToolQuery.resolve(data);
+      this._pendingToolQuery = null;
     }
   }
 
